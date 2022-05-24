@@ -3,3 +3,5 @@
 work/*
 transcript
 *.cr.mti
+*.mpf_new
+*.wlf
