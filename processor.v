@@ -2,6 +2,8 @@ module processor;
 reg [31:0] pc; //32-bit prograom counter
 reg clk; //clock
 reg [7:0] datmem[0:31],mem[0:31]; //32-size data and instruction memory (8 bit(1 byte) for each location)
+reg statusn;
+reg statusz;
 wire [31:0] 
 dataa,	//Read data 1 output of Register File
 datab,	//Read data 2 output of Register File
@@ -29,7 +31,9 @@ dpack;	//Read data output of memory (data read from memory)
 wire [2:0] gout;	//Output of ALU control unit
 
 wire zout,	//Zero output of ALU
-pcsrc,	//Output of AND gate with Branch and ZeroOut inputs
+nout,
+brnout,
+pcsrc,	//Output of AND gate with Branch and ZeroOut inputs 
 //Control signals
 regdest,alusrc,memtoreg,regwrite,memread,memwrite,branch,aluop1,aluop0;
 
@@ -66,7 +70,9 @@ end
 assign dataa=registerfile[inst25_21];//Read register 1
 assign datab=registerfile[inst20_16];//Read register 2
 always @(posedge clk)
- registerfile[out1]= regwrite ? out3:registerfile[out1];//Write data to register
+begin
+ registerfile[out1]= (regwrite & ~brnout) ? out3:registerfile[out1];//Write data to register
+ end
 
 //read data from memory, sum stores address
 assign dpack={datmem[sum[5:0]],datmem[sum[5:0]+1],datmem[sum[5:0]+2],datmem[sum[5:0]+3]};
@@ -84,14 +90,21 @@ mult2_to_1_32 mult3(out3, sum,dpack,memtoreg);
 //mux with (Branch&ALUZero) control
 mult2_to_1_32 mult4(out4, adder1out,adder2out,pcsrc);
 
+
 // load pc
 always @(negedge clk)
-pc=out4;
+begin
+	pc=out4;
+	if (brnout & statusn)
+		pc=sum;
+	statusn= nout;
+	statusz= zout;
+end
 
 // alu, adder and control logic connections
 
 //ALU unit
-alu32 alu1(sum,dataa,out2,zout,gout);
+alu32 alu1(sum,dataa,out2,zout,nout,gout);
 
 //adder which adds PC and 4
 adder add1(pc,32'h4,adder1out);
@@ -107,7 +120,7 @@ aluop1,aluop0);
 signext sext(instruc[15:0],extad);
 
 //ALU control unit
-alucont acont(aluop1,aluop0,instruc[3],instruc[2], instruc[1], instruc[0] ,gout);
+alucont acont(aluop1,aluop0,instruc[5],instruc[4], instruc[3],instruc[2], instruc[1], instruc[0] ,gout,brnout);
 
 //Shift-left 2 unit
 shift shift2(sextad,extad);
