@@ -19,6 +19,7 @@ begin
 		  end
 	3'b000: sum=a & b;	//ALU control line=000, AND
 	3'b001: sum=a|b;		//ALU control line=001, OR
+	3'b011: sum=b<<a;		//ALU control line=011, SLLV
 	default: sum=31'bx;	
 	endcase
 zout=~(|sum);
